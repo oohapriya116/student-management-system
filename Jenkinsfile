@@ -22,21 +22,31 @@ pipeline {
 
         stage('Push to Docker Hub') {
             steps {
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: 'dockerhub-creds',
-                        usernameVariable: 'DOCKERHUB_USER',
-                        passwordVariable: 'DOCKERHUB_PASS'
-                    )
-                ]) {
-                    powershell '''
-                        $env:DOCKERHUB_PASS |
-                        docker login --username $env:DOCKERHUB_USER --password-stdin
-                    '''
+               withCredentials([
+    usernamePassword(
+        credentialsId: 'dockerhub-creds',
+        usernameVariable: 'DOCKERHUB_USER',
+        passwordVariable: 'DOCKERHUB_PASS'
+    )
+]) {
+    powershell '''
+        if ([string]::IsNullOrWhiteSpace($env:DOCKERHUB_USER)) {
+            throw "Docker Hub username is missing."
+        }
 
-                    bat 'docker push %IMAGE_NAME%:v1'
-                    bat 'docker push %IMAGE_NAME%:latest'
-                }
+        if ([string]::IsNullOrWhiteSpace($env:DOCKERHUB_PASS)) {
+            throw "Docker Hub password/token is missing."
+        }
+
+        Write-Host "Docker Hub credential variables are present."
+
+        $env:DOCKERHUB_PASS |
+            docker login --username $env:DOCKERHUB_USER --password-stdin
+    '''
+
+    bat 'docker push %IMAGE_NAME%:v1'
+    bat 'docker push %IMAGE_NAME%:latest'
+               }  
             }
         }
     }
